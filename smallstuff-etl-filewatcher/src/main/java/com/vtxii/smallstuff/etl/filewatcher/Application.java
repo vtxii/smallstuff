@@ -11,9 +11,6 @@ import org.springframework.boot.context.embedded.ServletContextInitializer;
 import org.springframework.boot.context.web.SpringBootServletInitializer;
 import org.springframework.context.annotation.Bean;
 
-import com.vtxii.smallstuff.etl.common.Processor;
-import com.vtxii.smallstuff.etl.common.Filter;
-
 @SpringBootApplication
 public class Application extends SpringBootServletInitializer {
 
@@ -23,13 +20,13 @@ public class Application extends SpringBootServletInitializer {
 	}
 
 	// Parameters for watching files
+	// TODO:  improve configuration mechanism - hard coding in the class is not cool
 	@Bean
 	public ServletContextInitializer initializer() {
 		return new ServletContextInitializer() {
 			@Override
 			public void onStartup(ServletContext servletContext)
 					throws ServletException {
-				
 				servletContext.setInitParameter("processor-class-name",
 						"com.vtxii.smallstuff.etl.filewatcher.DefaultProcessor");
 				servletContext.setInitParameter("filter-class-name",
@@ -40,7 +37,7 @@ public class Application extends SpringBootServletInitializer {
 			}
 		};
 	}
-
+	
 	@Override
 	protected SpringApplicationBuilder configure(
 			SpringApplicationBuilder application) {

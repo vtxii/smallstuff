@@ -7,15 +7,21 @@ import javax.servlet.ServletContextListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * ContextListener
+ * 
+ * Kicks off the threads for watching for changes to a directory (files created/modified)
+ * when the servlet is started.
+ */
 public class ContextListener implements ServletContextListener {
 
 	private static final Logger logger = LoggerFactory.getLogger(ServletContextListener.class);
 
-	private static final String DIRECTORIES = "directories";
-	private static final String PROCESSOR_CLASS_NAME = "processor-class-name";
-	private static final String FILTER_CLASS_NAME = "filter-class-name";
-	private static final String MONITOR = "monitor";
-	private static final String POLLING_INTERVAL = "polling-interval";
+	static final String DIRECTORIES = "directories";
+	static final String PROCESSOR_CLASS_NAME = "processor-class-name";
+	static final String FILTER_CLASS_NAME = "filter-class-name";
+	static final String MONITOR = "monitor";
+	static final String POLLING_INTERVAL = "polling-interval";
 	
 	@Override
 	public void contextDestroyed(ServletContextEvent event) {

@@ -24,7 +24,7 @@ import com.vtxii.smallstuff.etl.common.Processor;
  * The watching process is performed via the NIO WatchService.  Once an event is
  * detected the resulting file processing is then performed by a LandingManager.
  */
-public class Watcher implements Runnable {
+class Watcher implements Runnable {
 
 	private static final Logger logger = LoggerFactory.getLogger(Watcher.class);
 	
@@ -114,7 +114,7 @@ public class Watcher implements Runnable {
         }
     }
     
-	public void stop() {
-    	running = false;
+	void setRunning(boolean running) {
+    	this.running = running;
     }
 }

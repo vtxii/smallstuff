@@ -15,8 +15,10 @@ import org.slf4j.LoggerFactory;
  * Monitor
  * 
  * Provides for starting, stopping, and indicating the status of watchers
+ * 
+ * TODO:  move from Thread to Executor
  */
-public class Monitor {
+class Monitor {
 
 	private static final Logger logger = LoggerFactory.getLogger(Monitor.class);
 	
@@ -37,7 +39,7 @@ public class Monitor {
 	 * @throws ClassNotFoundException
 	 * @throws IOException
 	 */
-	public void start(String directories, String pollingIntervalString, 
+	void start(String directories, String pollingIntervalString, 
 			String processorClassName, String filterClassName) throws ClassNotFoundException, IOException {
 		logger.debug("args {}, {}, {}, {}", directories, pollingIntervalString, processorClassName, filterClassName);
 		// Parse the pollingInterval and directories 
@@ -59,10 +61,8 @@ public class Monitor {
 		
 		// Spawn a thread for each directory
 		Thread thread;
-		Iterator<String> iterator = list.iterator();
-		while (iterator.hasNext()) {
-			String directory = iterator.next();
-			logger.debug("instantiating watcher", directory, pollingInterval);
+		for (String entry : list) {
+			String directory = entry;
 			Watcher watcher = new Watcher(directory, pollingInterval, processorClass,
 					filterClass);
 			thread = new Thread(watcher);
@@ -73,24 +73,22 @@ public class Monitor {
 	};
 
 	/**
-	 * Stops Watchers by iterating over the map of directories, Watchers, and Threads.
+	 * Stops Watchers by iterating over the map of directories, Watchers and Threads and
+	 * invoking the Watcher stop method.
 	 */
-	public void stop() {
+	void stop() {
 		String directory;
 		Object[] objects;
 		Watcher watcher;
 		Thread thread;
-		Entry<String, Object[]> entry;
-		Iterator<Entry<String, Object[]>> iterator = this.status.entrySet().iterator();
-		while (iterator.hasNext()) {
-			entry = iterator.next();
+		for (Entry<String, Object[]> entry :  status.entrySet()) {
 			directory = entry.getKey();
 			objects = entry.getValue();
 			watcher = (Watcher) objects[WATCHER_IDX];
 			thread = (Thread) objects[THREAD_IDX];
-			logger.debug("stopping watcher", directory, watcher, thread);
 			if (true == thread.isAlive()) {
-				watcher.stop();
+				logger.debug("stopping watcher", directory, watcher, thread);
+				watcher.setRunning(false);
 				try {
 					thread.join();
 				} catch (InterruptedException e) {
@@ -99,14 +97,38 @@ public class Monitor {
 			}
 		}
 	};
-		
+
+	/**
+	 * Restart Watchers by iterating over the map of directories, Watchers and Threads; checking
+	 * if the thread is running; and starting a new thread for threads that have stopped.
+	 */
+	void restart() {
+		String directory;
+		Object[] objects;
+		Watcher watcher;
+		Thread thread;
+		for (Entry<String, Object[]> entry :  status.entrySet()) {
+			directory = entry.getKey();
+			objects = entry.getValue();
+			watcher = (Watcher) objects[WATCHER_IDX];
+			thread = (Thread) objects[THREAD_IDX];
+			if (true != thread.isAlive()) {
+				logger.debug("restarting watcher", directory, watcher, thread);
+				watcher.setRunning(true);
+				thread = new Thread(watcher);
+				thread.start();
+				objects[THREAD_IDX] = thread;
+			}
+		}
+	};
+	
 	/**
 	 * Generate JSON indicating the watched directory and thread status by iterating
-	 * over the map of directories, Watchers, and Threads.
+	 * over the map of directories, Watchers and Threads.
 	 * 
 	 * @return JSON vector of objects with directory and Thread status
 	 */
-	public String getStatus() {
+	String getStatus() {
 		String json = "[";
 		String status;
 		String comma;

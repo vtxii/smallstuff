@@ -71,7 +71,7 @@ public class LandingManager {
 			}
 		}
 		
-		// Loop waiting to see if the file is closed
+		// Loop waiting for the file to be closed
 		while (false == isClosed(path)) {
 			try {
 				logger.debug("{} is busy", path);

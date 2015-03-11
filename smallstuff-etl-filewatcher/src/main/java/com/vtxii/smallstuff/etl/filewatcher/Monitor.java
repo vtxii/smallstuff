@@ -1,5 +1,6 @@
 package com.vtxii.smallstuff.etl.filewatcher;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -50,25 +51,30 @@ class Monitor {
 		// Get the classes for the processor and the filter
 		Class<?> processorClass = null;
 		if (null != processorClassName && 0 < processorClassName.length()) {
+			logger.debug("processorCLassName length: {}", processorClassName.length());
 			processorClass = Class.forName(processorClassName);
 		}
-		logger.debug("processorCLassName length: {}", processorClassName.length());
 		Class<?> filterClass = null;
 		if (null != filterClassName && 0 < filterClassName.length()) {
+			logger.debug("filterClassName length: {}", filterClassName.length());
 			filterClass = Class.forName(filterClassName);
 		}
-		logger.debug("filterClassName length: {}", filterClassName.length());
 		
 		// Spawn a thread for each directory
 		Thread thread;
 		for (String entry : list) {
 			String directory = entry;
-			Watcher watcher = new Watcher(directory, pollingInterval, processorClass,
-					filterClass);
-			thread = new Thread(watcher);
-			thread.start();
-			Object[] objects = new Object[]{watcher, thread};
-			status.put(directory, objects);
+			try {
+				Watcher watcher = new Watcher(directory, pollingInterval, processorClass,
+						filterClass);
+				thread = new Thread(watcher);
+				thread.setName(directory);
+				thread.start();
+				Object[] objects = new Object[]{watcher, thread};
+				status.put(directory, objects);
+			} catch (FileNotFoundException e) {
+				logger.error("directory doesn't exists: {}", directory);
+			}
 		}
 	};
 
@@ -116,6 +122,7 @@ class Monitor {
 				logger.debug("restarting watcher", directory, watcher, thread);
 				watcher.setRunning(true);
 				thread = new Thread(watcher);
+				thread.setName(directory);
 				thread.start();
 				objects[THREAD_IDX] = thread;
 			}

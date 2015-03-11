@@ -1,5 +1,6 @@
 package com.vtxii.smallstuff.etl.filewatcher;
 
+import java.io.FileNotFoundException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardWatchEventKinds;
@@ -29,19 +30,26 @@ class Watcher implements Runnable {
 	private static final Logger logger = LoggerFactory.getLogger(Watcher.class);
 	
 	private String directory;
+	private Path path;
 	private int pollingInterval;
 	private Class<?> processorClass;
 	private Class<?> filterClass;
 	private volatile boolean running = true; 
 	
 	public Watcher(String directory, int pollingInterval, Class<?> processorClass,
-			Class<?> filterClass ) {
+			Class<?> filterClass ) throws FileNotFoundException {
 		logger.debug("args: {}, {}, {}, {}", directory, pollingInterval, 
 				processorClass, filterClass);
-		this.directory = directory;
 		this.pollingInterval = pollingInterval;
 		this.processorClass = processorClass;
 		this.filterClass = filterClass;
+		this.directory = directory;
+		
+		// Make sure the directory exists
+		path = Paths.get(directory, "landing");
+		if (false == path.toFile().exists()) {
+			throw new FileNotFoundException();
+		}
 	}
 
     @Override
@@ -50,7 +58,6 @@ class Watcher implements Runnable {
 		LandingManager manager = new LandingManager();
     	try {
 	    	// Register the directory with the watch service for create
-	    	Path path = Paths.get(directory, "landing");
 	    	WatchService watcher = path.getFileSystem().newWatchService();
 	        path.register(watcher, 
 	        		StandardWatchEventKinds.ENTRY_CREATE, 

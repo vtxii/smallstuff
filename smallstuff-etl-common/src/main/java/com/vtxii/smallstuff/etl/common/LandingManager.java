@@ -1,3 +1,19 @@
+/**
+* Copyright 2015 VTXii
+*
+*   Licensed under the Apache License, Version 2.0 (the "License");
+*   you may not use this file except in compliance with the License.
+*   You may obtain a copy of the License at
+*
+*       http://www.apache.org/licenses/LICENSE-2.0
+*
+*   Unless required by applicable law or agreed to in writing, software
+*   distributed under the License is distributed on an "AS IS" BASIS,
+*   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*   See the License for the specific language governing permissions and
+*   limitations under the License.
+*/
+
 package com.vtxii.smallstuff.etl.common;
 
 import java.io.BufferedReader;
@@ -6,9 +22,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.RandomAccessFile;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -18,9 +31,6 @@ import java.util.zip.ZipOutputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-//import org.slf4j.Logger;
-//import org.slf4j.LoggerFactory;
 
 /**
  * LandingManager
@@ -49,8 +59,9 @@ public class LandingManager {
 	 * @param file recently landed file
 	 * @param processor object that implements the Processor interface
 	 * @param filter object that implements the Filter interface
+	 * @throws Exception 
 	 */
-	public void process(File file, Processor processor, Filter filter) {
+	public static void process(File file, Processor processor, Filter filter) throws Exception {
 		logger.debug("args: {}, {}, {}", file, processor, filter);
 		
 		// First things first - get the timestamp.  Then the path
@@ -59,7 +70,7 @@ public class LandingManager {
 		Path path = Paths.get(file.getAbsolutePath());
 		logger.debug("timestamp: {}", timestamp);
 
-		// See if we are processing this file
+		// See if we are even processing this file
 		if (null != filter) {
 			try {
 				path = filter.process(path);
@@ -67,7 +78,8 @@ public class LandingManager {
 					return;
 				}
 			} catch (Exception e) {
-				logger.error("invoking filter", e);
+				logger.error("filter exception: {}", e);
+				throw e;
 			}
 		}
 		
@@ -77,7 +89,8 @@ public class LandingManager {
 				logger.debug("{} is busy", path);
 				Thread.sleep(LOCK_POLLING_INTERVAL);
 			} catch (InterruptedException e) {
-				logger.error("sleep interrupt", e);
+				logger.error("sleep exception: {}", e);
+				throw e;
 			}
 		}
 		
@@ -96,7 +109,8 @@ public class LandingManager {
 				try {
 					processor.process(working);
 				} catch (Exception e) {
-					logger.error("invoking processor", e);
+					logger.error("processor exception: {}", e);
+					throw e;
 				}
 			}
 			
@@ -107,7 +121,8 @@ public class LandingManager {
 			zip(archive);
 			Files.delete(archive);
 		} catch (IOException e) {
-			logger.error("io exception", path, working, archive, e);
+			logger.error("io exception: {}, {}, {}, {}", path, working, archive, e);
+			throw e;
 		}
 	}
 	
@@ -117,7 +132,7 @@ public class LandingManager {
 	 * @param path
 	 * @throws IOException
 	 */
-	private void zip(Path path) throws IOException {
+	private static void zip(Path path) throws IOException {
 		// Define the zip file
 		Path zip = Paths.get(path.toString() + ".zip");
 		File out = zip.toFile();
@@ -150,7 +165,7 @@ public class LandingManager {
 	 * @param extension new extension
 	 * @return
 	 */
-	private Path editPath(Path starting, String directory, String file, String extension) {
+	private static Path editPath(Path starting, String directory, String file, String extension) {
 		int length = starting.getNameCount();
 		Path path = Paths.get(
 				starting.getRoot().toString(),
@@ -166,8 +181,9 @@ public class LandingManager {
 	 * 
 	 * @param path absolute path of the file of interest
 	 * @return true if it is good to go
+	 * @throws Exception 
 	 */
-	private boolean isClosed(Path path) {
+	private static boolean isClosed(Path path) throws Exception {
 		Process plsof = null;
 		BufferedReader reader = null;
 	    try {
@@ -184,12 +200,14 @@ public class LandingManager {
 		    reader.close();
 		    plsof.destroy();
 	    } catch(Exception e) {
-			logger.error("exception", e);
+			logger.error("isClosed exception: {}", e);
+			throw e;
 	    } finally {
 		    try {
 				reader.close();
 			} catch (IOException e) {
-				logger.error("io exception", e);
+				logger.error("closing reader exception: {}", e);
+				throw e;
 			}
 		    plsof.destroy();
 	    }

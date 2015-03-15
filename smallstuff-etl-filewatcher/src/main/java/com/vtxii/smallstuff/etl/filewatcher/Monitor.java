@@ -1,3 +1,19 @@
+/**
+* Copyright 2015 VTXii
+*
+*   Licensed under the Apache License, Version 2.0 (the "License");
+*   you may not use this file except in compliance with the License.
+*   You may obtain a copy of the License at
+*
+*       http://www.apache.org/licenses/LICENSE-2.0
+*
+*   Unless required by applicable law or agreed to in writing, software
+*   distributed under the License is distributed on an "AS IS" BASIS,
+*   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*   See the License for the specific language governing permissions and
+*   limitations under the License.
+*/
+
 package com.vtxii.smallstuff.etl.filewatcher;
 
 import java.io.FileNotFoundException;
@@ -73,7 +89,7 @@ class Monitor {
 				Object[] objects = new Object[]{watcher, thread};
 				status.put(directory, objects);
 			} catch (FileNotFoundException e) {
-				logger.error("directory doesn't exists: {}", directory);
+				logger.error("directory doesn't exists exception: {}", directory);
 			}
 		}
 	};
@@ -93,12 +109,12 @@ class Monitor {
 			watcher = (Watcher) objects[WATCHER_IDX];
 			thread = (Thread) objects[THREAD_IDX];
 			if (true == thread.isAlive()) {
-				logger.debug("stopping watcher", directory, watcher, thread);
+				logger.debug("stopping watcher: {}, {}, {}", directory, watcher, thread);
 				watcher.setRunning(false);
 				try {
 					thread.join();
 				} catch (InterruptedException e) {
-					logger.error("unable to join thread as part of stopping the thread", e);
+					logger.error("stop exception: {}", e);
 				}
 			}
 		}
@@ -119,7 +135,7 @@ class Monitor {
 			watcher = (Watcher) objects[WATCHER_IDX];
 			thread = (Thread) objects[THREAD_IDX];
 			if (true != thread.isAlive()) {
-				logger.debug("restarting watcher", directory, watcher, thread);
+				logger.debug("restarting watcher: {}, {}, {}", directory, watcher, thread);
 				watcher.setRunning(true);
 				thread = new Thread(watcher);
 				thread.setName(directory);

@@ -1,3 +1,19 @@
+/**
+* Copyright 2015 VTXii
+*
+*   Licensed under the Apache License, Version 2.0 (the "License");
+*   you may not use this file except in compliance with the License.
+*   You may obtain a copy of the License at
+*
+*       http://www.apache.org/licenses/LICENSE-2.0
+*
+*   Unless required by applicable law or agreed to in writing, software
+*   distributed under the License is distributed on an "AS IS" BASIS,
+*   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*   See the License for the specific language governing permissions and
+*   limitations under the License.
+*/
+
 package com.vtxii.smallstuff.etl.filewatcher;
 
 import java.io.FileNotFoundException;
@@ -31,12 +47,12 @@ class Watcher implements Runnable {
 	
 	private String directory;
 	private Path path;
-	private int pollingInterval;
+	private long pollingInterval;
 	private Class<?> processorClass;
 	private Class<?> filterClass;
 	private volatile boolean running = true; 
 	
-	public Watcher(String directory, int pollingInterval, Class<?> processorClass,
+	public Watcher(String directory, long pollingInterval, Class<?> processorClass,
 			Class<?> filterClass ) throws FileNotFoundException {
 		logger.debug("args: {}, {}, {}, {}", directory, pollingInterval, 
 				processorClass, filterClass);
@@ -55,7 +71,6 @@ class Watcher implements Runnable {
     @Override
     public void run() {
     	WatchKey key = null;
-		LandingManager manager = new LandingManager();
     	try {
 	    	// Register the directory with the watch service for create
 	    	WatchService watcher = path.getFileSystem().newWatchService();
@@ -99,7 +114,7 @@ class Watcher implements Runnable {
 							Path newPath = ((WatchEvent<Path>) event).context();
 							newPath = Paths.get(path.toString(), newPath.toString());
 							if (true == newPath.toFile().exists()) {
-								manager.process(newPath.toFile(), processor, filter);
+								LandingManager.process(newPath.toFile(), processor, filter);
 							}
 						}
 					}
@@ -109,15 +124,14 @@ class Watcher implements Runnable {
 	    		} catch (Exception e) {
 	    			// If there is an exception we try to keep looping, remembering
 	    			// to cleanup the lock and the key.
-	    			logger.error("exception in watcher loop for directory \"" + 
-	    					directory + "\"", e);
+	    			logger.error("watcher loop for {} exception: {}", directory, e);
 					if(!key.reset()) {
 						break;
 					}	    			
 				}
 	        }
         } catch (Exception e) {
-			logger.error("exception registering directory \"" + directory + "\"", e); 	
+			logger.error("registering {} exception: {}", directory, e);
         }
     }
     

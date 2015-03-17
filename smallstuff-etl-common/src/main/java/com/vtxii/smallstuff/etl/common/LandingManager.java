@@ -20,8 +20,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -84,7 +86,7 @@ public class LandingManager {
 		}
 		
 		// Loop waiting for the file to be closed
-		while (false == isClosed(path)) {
+		while (true == fileIsBusy(path)) {
 			try {
 				logger.debug("{} is busy", path);
 				Thread.sleep(LOCK_POLLING_INTERVAL);
@@ -176,41 +178,75 @@ public class LandingManager {
 	}
 	
 	/**
-	 * Really NON PORTABLE way to check if a file is being used by another process.
-	 * No, the NIO stuff doesn't work!
+	 * Check if a file is being used by another process.  Yep, the NIO stuff 
+	 * doesn't work!
 	 * 
 	 * @param path absolute path of the file of interest
-	 * @return true if it is good to go
+	 * @return false if it is good to go
 	 * @throws Exception 
 	 */
-	private static boolean isClosed(Path path) throws Exception {
-		Process plsof = null;
+	private static boolean fileIsBusy(Path path) throws Exception {
 		BufferedReader reader = null;
-	    try {
-	        plsof = new ProcessBuilder(new String[]{"lsof", "|", "grep", path.toString()}).start();
-	        reader = new BufferedReader(new InputStreamReader(plsof.getInputStream()));
-	        String line;
-	        while((line=reader.readLine())!=null) {
-	            if(line.contains(path.toString())) {                            
-	                reader.close();
-	                plsof.destroy();
-	                return false;
-	            }
-	        }
-		    reader.close();
-		    plsof.destroy();
-	    } catch(Exception e) {
-			logger.error("isClosed exception: {}", e);
-			throw e;
-	    } finally {
-		    try {
+        String line;
+		boolean isBusy = true;
+		if (true == isWindows()) {
+			try {
+				File file = path.toFile();
+				reader = new BufferedReader(new FileReader(file));
+				reader.readLine();
 				reader.close();
-			} catch (IOException e) {
-				logger.error("closing reader exception: {}", e);
+				isBusy = false;
+				logger.debug("isBusy: {}", isBusy);
+			} catch (FileSystemException e) {
+				reader.close();
+				isBusy = true;
+				logger.debug("isBusy: {}", isBusy);
+		    } finally {
+			    try {
+					reader.close();
+				} catch (IOException e) {
+					logger.error("closing reader exception: {}", e);
+					throw e;
+				}
+		    }
+		} else {
+			Process plsof = null;
+		    try {
+		        plsof = new ProcessBuilder(new String[]{"lsof", "|", "grep", path.toString()}).start();
+		        reader = new BufferedReader(new InputStreamReader(plsof.getInputStream()));
+		        while((line=reader.readLine())!=null && true == isBusy) {
+		            if(line.contains(path.toString())) {                            
+		                reader.close();
+		                plsof.destroy();
+		                isBusy = false;
+		            }
+		        }
+			    reader.close();
+			    plsof.destroy();
+		    } catch(Exception e) {
+				logger.error("isClosed exception: {}", e);
 				throw e;
-			}
-		    plsof.destroy();
-	    }
-	    return true;
+		    } finally {
+			    try {
+					reader.close();
+				} catch (IOException e) {
+					logger.error("closing reader exception: {}", e);
+					throw e;
+				}
+			    plsof.destroy();
+		    }
+		}
+		
+		return isBusy;
+	}
+	
+	/**
+	 * Determines if we are running on Windows
+	 * 
+	 * @return true if on Windows
+	 */
+	private static boolean isWindows() {
+		String os = System.getProperty("os.name").toUpperCase();
+		return -1 < os.indexOf("WIN");
 	}
 }
